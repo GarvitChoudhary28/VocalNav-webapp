@@ -1,74 +1,98 @@
-const voiceButton = document.getElementById("voiceButton");
-const output = document.getElementById("output");
+function greetUser() {
+     setTimeout(() => {
+         window.speechSynthesis.cancel(); // Force reset
+         let speech = new SpeechSynthesisUtterance("hello user! Welcome to the Vocalnav. Please enter or say a website name you want to explore.");
+         speech.onend = () => {
+             console.log("Speech finished.");
+         };
+         window.speechSynthesis.speak(speech);
+     }, 500); // Reduced delay for faster response
+ }
+ 
+ // Ensure it works even on page reload
+ document.addEventListener("visibilitychange", () => {
+     if (document.visibilityState === "visible") {
+         greetUser();
+     }
+ });
+ 
+ window.onload = greetUser;
+ 
+ 
+ 
+      function loadWebsite() {
+          var url = document.getElementById("websiteUrl").value;
+          if (url) {
+              if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                  url = "https://" + url;
+              }
+              document.getElementById("embeddedSite").src = url;
+          } else {
+              alert("Please enter a valid URL");
+          }
+      }     
+      function startVoiceRecognition() {
+          const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+          recognition.onstart = function() {
+              console.log("Voice recognition started...");
+          };
+          recognition.onresult = function(event) {
+              const transcript = event.results[0][0].transcript;
+              document.getElementById("websiteUrl").value = transcript;
+              loadWebsite();
+          };
+          recognition.start();
+      }     
+      //for hover-speak
+      function speakText(text) {
+       window.speechSynthesis.cancel();
+       const speech = new SpeechSynthesisUtterance(text);
+       window.speechSynthesis.speak(speech);
+     }
+     
+     document.querySelectorAll('.hover-speak').forEach(div => {
+       div.addEventListener('mouseenter', () => {
+         const message = div.getAttribute('data-speech');
+         if (message) speakText(message);
+       });
+     
+       div.addEventListener('mouseleave', () => {
+         window.speechSynthesis.cancel();
+       });
+     })     
+        
+  // Layout descriptions for known websites
+  const layoutDescriptions = {
+    "udemy.com": "This is udemy. The top has a navigation bar, middle shows  a landing page. and list of varius education field, followed by various courses with there prices and course details",
+    "wikipedia.com": "This is Wikipedia. The top contains the search bar. The center has the article content. Left sidebar has categories.",
+    "example.com": "This is an example layout with header, body and footer.",
+    // Add more known websites here...
+  };
 
-voiceButton.addEventListener("click", () => {
-    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.lang = 'en-US';
+  // Get the iframe
+  const iframe = document.getElementById("embeddedSite");
 
-        recognition.onstart = () => {
-            output.textContent = "Listening...";
-        };
+  iframe.addEventListener("mouseenter", () => {
+    try {
+      const url = new URL(iframe.src);
+      const domain = url.hostname.replace('www.', '');
 
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript.toLowerCase();
-            output.textContent = `You said: "${transcript}"`;
+      const description = layoutDescriptions[domain];
 
-            if (transcript.includes("open")) {
-                const site = transcript.replace("open ", "").trim();
-                searchWebsite(site);
-            }
-        };
-
-        recognition.onerror = (event) => {
-            output.textContent = "Error occurred: " + event.error;
-        };
-
-        recognition.start();
-    } else {
-        output.textContent = "Speech recognition is not supported in this browser.";
+      if (description) {
+        speakText(description);
+      } else {
+        speakText(" Sorry, unable to describe this website.  ");
+      }
+    } catch (e) {
+        speakText("Sorry, unable to describe this website.");
     }
-});
+  });
 
-function searchWebsite(query) {
-    const searchUrl = `https://www.google.com/search?q=${query}`;
-    document.getElementById("embeddedSite").src = searchUrl;
-}
-
-///for wesite layout
-
-function describeWebsite(query) {
-    const url = `https://www.${query.replace(/\s/g, "")}.com`;
-
-    fetch(`/fetch-structure/?url=${url}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                output.textContent = "Could not retrieve website structure.";
-            } else {
-                let description = `Website: ${data.title}. ${data.description}`;
-
-                if (data.headings.length > 0) {
-                    description += ` The main headings are: ${data.headings.join(", ")}.`;
-                }
-                if (data.buttons.length > 0) {
-                    description += ` It has buttons such as: ${data.buttons.slice(0, 5).join(", ")}.`;
-                }
-                if (data.links.length > 0) {
-                    description += ` There are ${data.links.length} links on the page.`;
-                }
-
-                output.textContent = description;
-                speakText(description);
-            }
-        })
-        .catch(error => {
-            output.textContent = "Failed to fetch website details.";
-        });
-}
-
-function speakText(text) {
-    const speech = new SpeechSynthesisUtterance(text);
-    speech.lang = "en-US";
-    window.speechSynthesis.speak(speech);
-}
+  // Function to read the layout description aloud
+  function speakText(text) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    window.speechSynthesis.cancel(); // stop previous speech
+    window.speechSynthesis.speak(utterance);
+  }  
